@@ -52,6 +52,7 @@ jobs:
          key: S{{secrers.EC2_SSH_KEY}}
          script: | 
             cd /home/Arshaan/authapp
+            docker network create shared_network
             docker-compose pull
             docker-compose down
             docker-compose up -d
