@@ -53,6 +53,10 @@ jobs:
          script: | 
             cd /home/Arshaan/authapp
             docker network create shared_network
+            docker compose down
+            sudo rm -rf ./data
+            docker compose up -d
+            docker compose logs postgres
             docker-compose pull
             docker-compose down
             docker-compose up -d
