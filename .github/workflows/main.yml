@@ -1,60 +1,72 @@
 name: CI/CD pipeline
 
 on:
- push:
-   branches:
-     - main
+  push:
+    branches: [ "main" ]
 
 jobs:
-  build-and-deploy:
-    runs-on: ubuntu-latest
+  build:
+   runs-on: ubuntu-latest
+   steps:
+     - uses: actions/checkout@v3
+     
+     - name: Checkout
+       uses: actions/checkout@v3
 
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v3
-
-      - name: set up jdk 21
-        uses: actions/setup-java@v3
-        with:
+     - name: set up jdk 21
+       uses: actions/setup-java@v3
+       with:
           java-version: '21'
           distribution: 'temurin'
 
-      - name: build jar
-        run: mvn clean package
+     - name: Install Maven
+       run: sudo apt install maven -y
 
-      - name: login to docker hub
-        uses: docker/login-action@v2
-        with:
-         username: ${{secrets.DOCKER_USERNAME}}
-         password: ${{secrets.DOCKER_PASSWORD}}
-         
-      - name: build and push image
-        uses: docker/build-push-action@v4
-        with:
+     - name: build jar
+       run: mvn clean package -DskipTests
+
+
+     - name: login to docker hub
+       uses: docker/login-action@v2
+       with:
+          username: ${{secrets.DOCKER_USERNAME}}
+          password: ${{secrets.DOCKER_PASSWORD}}
+
+     - name: Build and push image
+       uses: docker/build-push-action@v4
+       with:
          context: .
          push: true
-         tags: arshaan/authapp:latest
+         tags: arshaanarul/authapp:latest
 
-      - name: copy compose files to ec2
-        uses: appleboy/scp-action@master
-        with: 
-         host: ${{secrets.EC2_HOST}}
-         username: Arshaan
-         key: ${{secrets.EC2_SSH_KEY}}
-         source: "docker-compose.yml"
-         target: /home/Arshaan/authapp
+  deploy:
+   runs-on: self-hosted
+   needs: build
+   
+   steps:
 
-      - name: deploy to ec2
-        uses: appleboy/ssh-action@master
-        with:
-         host: ${{secrets.EC2_HOST}}
-         username: Arshaan
-         key: S{{secrers.EC2_SSH_KEY}}
-         script: | 
-            cd /home/Arshaan/authapp
-            docker network create shared_network
-            docker-compose pull
-            docker-compose down
-            docker-compose up -d
+     - name: Fix permissions
+       run: |
+         sudo chown -R $USER:$USER $GITHUB_WORKSPACE || true
+         sudo chown -R $USER:$USER /home/ubuntu/actions-runner/_work || true
+         
+     - uses: actions/checkout@v3 
+     - name: login to docker hub
+       run: docker login -u ${{secrets.DOCKER_USERNAME}} -p ${{secrets.DOCKER_PASSWORD}}
+       
+    
+
+     - name: clean up old images
+       run: |
+         docker-compose down --rmi all --volumes --rmeove-orphans || true
+         docker system prune -a --volumes -f
+
+     - name: deploy
+       run: |
+         cd $GITHUB_WORKSPACE
+         docker network create shared_network
+         docker-compose pull
+         docker-compose down
+         docker-compose up -d
       
 
