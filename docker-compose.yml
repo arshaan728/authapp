@@ -60,3 +60,6 @@ networks:
   shared_network:
     external: true
 
+volumes:
+  postgres_data:
+
