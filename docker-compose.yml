@@ -1,0 +1,55 @@
+services:
+  app:
+    build: .
+    ports:
+      - "8080:8080"
+    depends_on:
+      - postgres
+      - redis
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-2:5432/logindbinv
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: 123
+      SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT: org.hibernate.dialect.PostgreSQLDialect
+      SPRING_SESSION_JDBC_INITIALIZE_SCHEMA: always
+      SPRING_REDIS_HOST: redis
+      SPRING_REDIS_PORT: 6379
+    networks:
+      - apinetwork
+      - shared_network
+
+  postgres:
+    image: postgres:17-alpine
+    container_name: postgres-2
+    environment:
+      POSTGRES_DB: logindbinv
+      POSTGRES_USER: root
+      POSTGRES_PASSWORD: 123
+    volumes:
+      - ./data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - apinetwork
+      - shared_network
+
+  redis:
+    image: redis:trixie
+    container_name: redis-2
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    networks:
+      - apinetwork
+      - shared_network
+
+networks:
+  apinetwork:
+    driver: bridge
+  shared_network:
+    external: true
+
