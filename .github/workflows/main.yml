@@ -64,7 +64,7 @@ jobs:
      - name: deploy
        run: |
          cd $GITHUB_WORKSPACE
-         docker network create shared_network
+         docker network create shared_network || true
          docker-compose pull
          docker-compose down
          docker-compose up -d
